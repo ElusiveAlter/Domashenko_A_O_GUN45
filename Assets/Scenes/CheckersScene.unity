@@ -230,7 +230,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 22400762, guid: 67117722a812a2e46ab8cb8eafbf5f5e, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0.000030517578
+      value: 0.000022888184
       objectReference: {fileID: 0}
     - target: {fileID: 22426080, guid: 67117722a812a2e46ab8cb8eafbf5f5e, type: 3}
       propertyPath: m_AnchorMax.x
@@ -552,6 +552,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _battlefield: {fileID: 2043100832}
+  _player: {fileID: 1321273792}
+  _inputActions: {fileID: -944628639613478452, guid: 7b0ebcc72ac28e044b260c459b0359dc, type: 3}
 --- !u!4 &1321273794
 Transform:
   m_ObjectHideFlags: 0
