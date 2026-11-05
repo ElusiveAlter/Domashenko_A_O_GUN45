@@ -119,3 +119,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _meshRenderer: {fileID: 5682158921814885358}
+  _highlightMaterial: {fileID: 2100000, guid: f7e228c0cf213af49b779b4d676b2a85, type: 2}
