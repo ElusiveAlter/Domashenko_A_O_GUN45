@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Netologia.Tactical
@@ -19,6 +20,12 @@ namespace Netologia.Tactical
 
         private Cell[,] _cells;
         private Cell _selected;
+
+        /// <summary>
+        /// Событие клика по клетке — на него подписывается BattleController
+        /// и передаёт клик в команду IGameplayCommand (п. 3.2 ТЗ)
+        /// </summary>
+        public event Action<Cell> CellClicked;
 
         private void Awake()
         {
@@ -61,6 +68,9 @@ namespace Netologia.Tactical
                 _selected.MeshRenderer.sharedMaterial = _selected.IsDark ? _darkMaterial : _lightMaterial;
             _selected = cell;
             cell.MeshRenderer.sharedMaterial = _selectedMaterial;
+
+            // Пробрасываем клик дальше по цепочке: Battlefield → BattleController → команда
+            CellClicked?.Invoke(cell);
         }
     }
 }
