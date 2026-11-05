@@ -19,6 +19,8 @@ namespace Netologia.Tactical
 
         public MeshRenderer MeshRenderer => _meshRenderer;
 
+        public Unit Unit { get; set; }
+
         public void Initialize(int x, int z, bool isDark)
         {
             X = x;
