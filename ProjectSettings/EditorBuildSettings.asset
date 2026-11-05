@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/CheckersScene.unity
+    guid: 1d9c6e88792401b46b8306d5b4865779
   m_configObjects: {}
