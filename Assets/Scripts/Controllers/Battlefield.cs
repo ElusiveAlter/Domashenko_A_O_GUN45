@@ -98,26 +98,28 @@ namespace Netologia.Tactical
         /// <summary>
         /// Выбирает фишку текущего игрока, стоящую на клетке, и подсвечивает её ходы.
         /// Возвращает false, если фишки нет или она чужая
-        /// (ограничение обязательной атаки проверяет команда)
+        /// (ограничение обязательной атаки проверяет команда).
+        /// attacksOnly — показать только ходы с атакой (используется в цепочке атак)
         /// </summary>
-        public bool TrySelectUnit(Cell cell, UnitColor player)
+        public bool TrySelectUnit(Cell cell, UnitColor player, bool attacksOnly = false)
         {
             if (cell.Unit == null || cell.Unit.Color != player) return false;
             if (_selected == cell) return false;
             ResetSelection();
             _selected = cell;
             RefreshCellMaterial(cell);
-            HighlightMoves(cell);
+            // В режиме обязательной атаки доступны только ходы с атакой
+            HighlightMoves(cell, attacksOnly || HasMandatoryAttacks);
             return true;
         }
 
-        private void HighlightMoves(Cell cell)
+        private void HighlightMoves(Cell cell, bool attacksOnly)
         {
             _currentMoves.Clear();
             _moveCells.Clear();
             if (cell.Unit == null) return;
             // В режиме обязательной атаки доступны только ходы с атакой
-            CollectMoves(cell, _currentMoves, HasMandatoryAttacks);
+            CollectMoves(cell, _currentMoves, attacksOnly);
             foreach (var destination in _currentMoves.Keys)
             {
                 destination.MeshRenderer.sharedMaterial = _moveMaterial;
@@ -226,9 +228,11 @@ namespace Netologia.Tactical
         /// </summary>
         public void ComputeMandatoryAttacks(UnitColor player)
         {
-            // Снимаем подсветку прошлого хода, прежде чем строить новую
+            // Снимаем подсветку прошлого хода напрямую: клетка ещё в списке,
+            // поэтому RefreshCellMaterial вернул бы ей красный обратно
             foreach (var cell in _mandatoryCells)
-                RefreshCellMaterial(cell);
+                if (cell != _selected)
+                    cell.MeshRenderer.sharedMaterial = cell.IsDark ? _darkMaterial : _lightMaterial;
             _mandatoryCells.Clear();
 
             for (var x = 0; x < _size; x++)
@@ -298,8 +302,10 @@ namespace Netologia.Tactical
 
         private void ClearMoveHighlights()
         {
+            // Перекрашиваем напрямую: RefreshCellMaterial видел бы клетки в _moveCells
+            // и возвращал им синий, из-за чего подсветка «залипала» после хода
             foreach (var cell in _moveCells)
-                RefreshCellMaterial(cell);
+                cell.MeshRenderer.sharedMaterial = cell.IsDark ? _darkMaterial : _lightMaterial;
             _moveCells.Clear();
             _currentMoves.Clear();
         }

@@ -39,7 +39,8 @@ namespace Netologia.Tactical
             if (victim != null && battlefield.HasAttacksFrom(to))
             {
                 IsAttackChain = true;
-                battlefield.TrySelectUnit(to, CurrentTurn);
+                // Только взятия: простые ходы в цепочке атак запрещены
+                battlefield.TrySelectUnit(to, CurrentTurn, true);
                 Status = GameStatus.Move;
                 Debug.Log("[Game] Цепочка атак: продолжайте взятие этой фишкой");
                 return;
