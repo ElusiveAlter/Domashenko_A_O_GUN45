@@ -12,6 +12,9 @@ namespace Netologia.Tactical
         public GameStatus Status { get; set; } = GameStatus.Select;
         public UnitColor CurrentTurn { get; private set; }
 
+        /// <summary>Идёт цепочка обязательных атак — выйти из состояния нельзя </summary>
+        public bool IsAttackChain { get; private set; }
+
         private void Awake()
         {
             // Первый ход выбирается случайно
@@ -23,15 +26,29 @@ namespace Netologia.Tactical
         public void UnlockInput() => InputEnabled = true;
 
         /// <summary>
-        /// Выполняет ход: блокирует ввод, применяет перемещение, переключает очередь.
-        /// Плавная визуализация будет добавлена на этом же месте — каркас уже готов
+        /// Выполняет ход: блокирует ввод, применяет перемещение и решает, что дальше —
+        /// продолжение атаки той же фишкой (п. 7 ТЗ) или переход хода с аналитикой
         /// </summary>
         public void ExecuteMove(Battlefield battlefield, Cell from, Cell to, Cell victim)
         {
             LockInput();
             battlefield.MoveUnit(from, to, victim);
             UnlockInput();
+
+            // После взятия той же фишкой возможна ещё атака — продолжаем обязательно
+            if (victim != null && battlefield.HasAttacksFrom(to))
+            {
+                IsAttackChain = true;
+                battlefield.TrySelectUnit(to, CurrentTurn);
+                Status = GameStatus.Move;
+                Debug.Log("[Game] Цепочка атак: продолжайте взятие этой фишкой");
+                return;
+            }
+
+            IsAttackChain = false;
             SwitchTurn();
+            // Аналитика всех фишек нового игрока в начале его хода
+            battlefield.ComputeMandatoryAttacks(CurrentTurn);
         }
 
         public void SwitchTurn()

@@ -33,6 +33,13 @@ namespace Netologia.Tactical.Commands
 
         private void TrySelect(Cell cell)
         {
+            // Обязательная атака: доступен выбор только фишек с атакой
+            if (_battlefield.HasMandatoryAttacks && !_battlefield.IsMandatoryCell(cell))
+            {
+                Debug.Log("[Command] Обязательная атака: выберите фишку с ходом-атакой");
+                return;
+            }
+
             if (_battlefield.TrySelectUnit(cell, _player.CurrentTurn))
             {
                 _player.Status = GameStatus.Move;
@@ -54,6 +61,13 @@ namespace Netologia.Tactical.Commands
                 var attack = victim != null ? $" с атакой на ({victim.X}, {victim.Z})" : string.Empty;
                 Debug.Log($"[Command] Ход ({selected.X}, {selected.Z}) -> ({cell.X}, {cell.Z}){attack}");
                 _player.ExecuteMove(_battlefield, selected, cell, victim);
+                return;
+            }
+
+            // В цепочке атак перевыбор и сброс запрещены
+            if (_player.IsAttackChain)
+            {
+                Debug.Log("[Command] Цепочка атак: продолжайте взятие этой фишкой");
                 return;
             }
 

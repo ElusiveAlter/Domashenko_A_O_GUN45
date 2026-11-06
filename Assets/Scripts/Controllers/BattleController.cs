@@ -29,6 +29,12 @@ namespace Netologia.Tactical
             _confirmAction = map.FindAction("Confirm");
         }
 
+        private void Start()
+        {
+            // Первая аналитика обязательных атак в начале игры
+            _battlefield.ComputeMandatoryAttacks(_player.CurrentTurn);
+        }
+
         private void OnEnable()
         {
             _battlefield.CellClicked += OnCellClicked;
@@ -55,9 +61,18 @@ namespace Netologia.Tactical
 
         private void OnCancel(InputAction.CallbackContext context)
         {
-            // Cancel сбрасывает выбранную фишку
-            if (_player.InputEnabled && _player.Status == GameStatus.Move)
+            if (!_player.InputEnabled) return;
+
+            // Из цепочки атак выйти насильно нельзя
+            if (_player.IsAttackChain)
             {
+                Debug.Log("[Input] Cancel: цепочка атак не может быть прервана");
+                return;
+            }
+
+            if (_player.Status == GameStatus.Move)
+            {
+                // Ограничение обязательной атаки не снимается
                 _battlefield.ResetSelection();
                 _player.Status = GameStatus.Select;
                 Debug.Log("[Input] Cancel: сброс выбора фишки");
