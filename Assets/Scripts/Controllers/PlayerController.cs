@@ -1,10 +1,12 @@
+using System;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace Netologia.Tactical
 {
     /// <summary>
     /// Блокирует управление на время визуализации хода, хранит статус игры
-    /// и очередь хода, выполняет ход
+    /// и очередь хода, выполняет ход (п. 2 устройства классов ТЗ)
     /// </summary>
     public class PlayerController : MonoBehaviour
     {
@@ -12,14 +14,18 @@ namespace Netologia.Tactical
         public GameStatus Status { get; set; } = GameStatus.Select;
         public UnitColor CurrentTurn { get; private set; }
 
-        /// <summary>Идёт цепочка обязательных атак — выйти из состояния нельзя </summary>
+        /// <summary>Идёт цепочка обязательных атак — выйти из состояния нельзя (п. 7.3 ТЗ)</summary>
         public bool IsAttackChain { get; private set; }
+
+        /// <summary>Событие смены очереди хода — для панели хода и прочего UI</summary>
+        public event Action<UnitColor> TurnChanged;
 
         private void Awake()
         {
-            // Первый ход выбирается случайно
+            // Первый ход выбирается случайно (п. 2 правил шашек ТЗ)
             CurrentTurn = Random.value < 0.5f ? UnitColor.Black : UnitColor.White;
             Debug.Log($"[Game] Первый ход: {CurrentTurn}");
+            TurnChanged?.Invoke(CurrentTurn);
         }
 
         public void LockInput() => InputEnabled = false;
@@ -27,7 +33,7 @@ namespace Netologia.Tactical
 
         /// <summary>
         /// Выполняет ход: блокирует ввод, применяет перемещение и решает, что дальше —
-        /// продолжение атаки той же фишкой (п. 7 ТЗ) или переход хода с аналитикой
+        /// продолжение атаки той же фишкой (п. 7 ТЗ) или переход хода с аналитикой (п. 6 ТЗ)
         /// </summary>
         public void ExecuteMove(Battlefield battlefield, Cell from, Cell to, Cell victim)
         {
@@ -35,11 +41,11 @@ namespace Netologia.Tactical
             battlefield.MoveUnit(from, to, victim);
             UnlockInput();
 
-            // После взятия той же фишкой возможна ещё атака — продолжаем обязательно
+            // После взятия той же фишкой возможна ещё атака — продолжаем обязательно (п. 7.1 ТЗ)
             if (victim != null && battlefield.HasAttacksFrom(to))
             {
                 IsAttackChain = true;
-                // Только взятия: простые ходы в цепочке атак запрещены
+                // Только взятия: простые ходы в цепочке атак запрещены (п. 7.2 ТЗ)
                 battlefield.TrySelectUnit(to, CurrentTurn, true);
                 Status = GameStatus.Move;
                 Debug.Log("[Game] Цепочка атак: продолжайте взятие этой фишкой");
@@ -48,7 +54,7 @@ namespace Netologia.Tactical
 
             IsAttackChain = false;
             SwitchTurn();
-            // Аналитика всех фишек нового игрока в начале его хода
+            // Аналитика всех фишек нового игрока в начале его хода (п. 6.1 ТЗ)
             battlefield.ComputeMandatoryAttacks(CurrentTurn);
         }
 
@@ -57,6 +63,7 @@ namespace Netologia.Tactical
             CurrentTurn = CurrentTurn == UnitColor.White ? UnitColor.Black : UnitColor.White;
             Status = GameStatus.Select;
             Debug.Log($"[Game] Ход переходит: {CurrentTurn}");
+            TurnChanged?.Invoke(CurrentTurn);
         }
     }
 }
