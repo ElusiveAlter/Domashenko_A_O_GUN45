@@ -25,6 +25,10 @@ namespace Netologia.Tactical
         [SerializeField]
         private Material _unitBlackMaterial;
         [SerializeField]
+        private Material _kingWhiteMaterial;
+        [SerializeField]
+        private Material _kingBlackMaterial;
+        [SerializeField]
         private int _size = 8;
 
         // Высота, на которую фишка ставится на клетку (клетка 0.2 высотой, верх на 0.1)
@@ -105,25 +109,59 @@ namespace Netologia.Tactical
             var unit = cell.Unit;
             if (unit == null) return;
 
-            var x = cell.X;
-            var z = cell.Z;
-            // Чёрные ходят в сторону роста Z, белые — в сторону уменьшения
-            var forward = unit.Color == UnitColor.Black ? 1 : -1;
-
-            foreach (var dx in Diagonals)
+            if (unit.IsKing)
             {
-                // Простое перемещение вперёд на пустую клетку
-                TryAddSimple(x + dx, z + forward);
-                // Атака вперёд: чужая фишка перед, пустая за ней
-                TryAddAttack(unit.Color, x + dx, z + forward, x + 2 * dx, z + 2 * forward);
-                // Атака назад — единственный разрешённый ход назад
-                TryAddAttack(unit.Color, x + dx, z - forward, x + 2 * dx, z - 2 * forward);
+                // Дамка ходит на любое расстояние по всем четырём диагоналям
+                foreach (var dx in Diagonals)
+                    foreach (var dz in Diagonals)
+                        ScanKingLine(unit.Color, cell.X, cell.Z, dx, dz);
+            }
+            else
+            {
+                var x = cell.X;
+                var z = cell.Z;
+                // Чёрные ходят в сторону роста Z, белые — в сторону уменьшения
+                var forward = unit.Color == UnitColor.Black ? 1 : -1;
+
+                foreach (var dx in Diagonals)
+                {
+                    // Простое перемещение вперёд на пустую клетку
+                    TryAddSimple(x + dx, z + forward);
+                    // Атака вперёд: чужая фишка перед, пустая за ней
+                    TryAddAttack(unit.Color, x + dx, z + forward, x + 2 * dx, z + 2 * forward);
+                    // Атака назад — единственный разрешённый ход назад
+                    TryAddAttack(unit.Color, x + dx, z - forward, x + 2 * dx, z - 2 * forward);
+                }
             }
 
             foreach (var destination in _currentMoves.Keys)
             {
                 destination.MeshRenderer.sharedMaterial = _moveMaterial;
                 _moveCells.Add(destination);
+            }
+        }
+
+        // Проходит по диагонали до упора: пустые клетки — ходы,
+        // первая встреченная фишка заканчивает линию (свою — блокирует, чужую — даёт атаку)
+        private void ScanKingLine(UnitColor mover, int x, int z, int dx, int dz)
+        {
+            var cx = x + dx;
+            var cz = z + dz;
+            while (TryGetCell(cx, cz, out var cell))
+            {
+                if (cell.Unit == null)
+                {
+                    _currentMoves[cell] = null;
+                }
+                else
+                {
+                    // Чужая фишка — атака с посадкой сразу за ней
+                    if (cell.Unit.Color != mover)
+                        TryAddAttack(mover, cx, cz, cx + dx, cz + dz);
+                    return; // первая фишка заканчивает линию в любом случае
+                }
+                cx += dx;
+                cz += dz;
             }
         }
 
@@ -178,6 +216,14 @@ namespace Netologia.Tactical
 
             unit.transform.localPosition = to.transform.localPosition + Vector3.up * UnitOffset;
             unit.SetCell(to);
+
+            // Достижение противоположного конца — превращение в дамку
+            if (!unit.IsKing && (unit.Color == UnitColor.Black ? to.Z == _size - 1 : to.Z == 0))
+            {
+                unit.Promote();
+                unit.MeshRenderer.sharedMaterial = unit.Color == UnitColor.White ? _kingWhiteMaterial : _kingBlackMaterial;
+                Debug.Log($"[Game] Фишка ({to.X}, {to.Z}) стала дамкой!");
+            }
         }
 
         public void ResetSelection()
