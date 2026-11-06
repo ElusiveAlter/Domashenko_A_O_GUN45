@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Netologia.Tactical
@@ -18,6 +19,8 @@ namespace Netologia.Tactical
         [SerializeField]
         private Material _selectedMaterial;
         [SerializeField]
+        private Material _moveMaterial;
+        [SerializeField]
         private Material _unitWhiteMaterial;
         [SerializeField]
         private Material _unitBlackMaterial;
@@ -27,8 +30,14 @@ namespace Netologia.Tactical
         // Высота, на которую фишка ставится на клетку (клетка 0.2 высотой, верх на 0.1)
         private const float UnitOffset = 0.3f;
 
+        // Диагональные смещения по X (вперёд/назад задаётся направлением фишки)
+        private static readonly int[] Diagonals = { -1, 1 };
+
         private Cell[,] _cells;
         private Cell _selected;
+        // Доступные ходы выбранной фишки: клетка назначения -> клетка жертвы (null без атаки)
+        private readonly Dictionary<Cell, Cell> _currentMoves = new();
+        private readonly List<Cell> _moveCells = new();
 
         /// <summary>Клетка с выбранной фишкой — нужна команде для сброса выбора</summary>
         public Cell SelectedCell => _selected;
@@ -74,7 +83,7 @@ namespace Netologia.Tactical
         }
 
         /// <summary>
-        /// Выбирает фишку текущего игрока, стоящую на клетке.
+        /// Выбирает фишку текущего игрока, стоящую на клетке, и подсвечивает её ходы.
         /// Возвращает false, если фишки нет или она чужая (статус и ход проверяет команда)
         /// </summary>
         public bool TrySelectUnit(Cell cell, UnitColor player)
@@ -84,14 +93,107 @@ namespace Netologia.Tactical
             ResetSelection();
             _selected = cell;
             cell.MeshRenderer.sharedMaterial = _selectedMaterial;
+            HighlightMoves(cell);
             return true;
+        }
+
+        private void HighlightMoves(Cell cell)
+        {
+            _currentMoves.Clear();
+            _moveCells.Clear();
+
+            var unit = cell.Unit;
+            if (unit == null) return;
+
+            var x = cell.X;
+            var z = cell.Z;
+            // Чёрные ходят в сторону роста Z, белые — в сторону уменьшения
+            var forward = unit.Color == UnitColor.Black ? 1 : -1;
+
+            foreach (var dx in Diagonals)
+            {
+                // Простое перемещение вперёд на пустую клетку
+                TryAddSimple(x + dx, z + forward);
+                // Атака вперёд: чужая фишка перед, пустая за ней
+                TryAddAttack(unit.Color, x + dx, z + forward, x + 2 * dx, z + 2 * forward);
+                // Атака назад — единственный разрешённый ход назад
+                TryAddAttack(unit.Color, x + dx, z - forward, x + 2 * dx, z - 2 * forward);
+            }
+
+            foreach (var destination in _currentMoves.Keys)
+            {
+                destination.MeshRenderer.sharedMaterial = _moveMaterial;
+                _moveCells.Add(destination);
+            }
+        }
+
+        private void TryAddSimple(int x, int z)
+        {
+            if (TryGetCell(x, z, out var cell) && cell.Unit == null)
+                _currentMoves[cell] = null;
+        }
+
+        private void TryAddAttack(UnitColor mover, int midX, int midZ, int dstX, int dstZ)
+        {
+            // Клетка с чужой фишкой должна существовать
+            if (!TryGetCell(midX, midZ, out var mid) || mid.Unit == null) return;
+            // Своя фишка блокирует всё направление
+            if (mid.Unit.Color == mover) return;
+            // Клетка за ней должна существовать и быть пустой, иначе направление блокировано
+            if (!TryGetCell(dstX, dstZ, out var dst) || dst.Unit != null) return;
+            _currentMoves[dst] = mid;
+        }
+
+        private bool TryGetCell(int x, int z, out Cell cell)
+        {
+            cell = null;
+            if (x < 0 || z < 0 || x >= _size || z >= _size) return false;
+            cell = _cells[x, z];
+            return true;
+        }
+
+        /// <summary>
+        /// Проверяет, доступен ли ход в клетку назначения, и возвращает жертву атаки (если есть)
+        /// </summary>
+        public bool TryGetMove(Cell to, out Cell victim)
+        {
+            victim = null;
+            return _selected != null && _currentMoves.TryGetValue(to, out victim);
+        }
+
+        /// <summary>Выполняет ход: перемещает фишку, убирает жертву атаки, снимает подсветку</summary>
+        public void MoveUnit(Cell from, Cell to, Cell victim)
+        {
+            ResetSelection();
+
+            var unit = from.Unit;
+            from.Unit = null;
+
+            if (victim != null)
+            {
+                var victimUnit = victim.Unit;
+                victim.Unit = null;
+                Destroy(victimUnit.gameObject);
+            }
+
+            unit.transform.localPosition = to.transform.localPosition + Vector3.up * UnitOffset;
+            unit.SetCell(to);
         }
 
         public void ResetSelection()
         {
+            ClearMoveHighlights();
             if (_selected == null) return;
             _selected.MeshRenderer.sharedMaterial = _selected.IsDark ? _darkMaterial : _lightMaterial;
             _selected = null;
+        }
+
+        private void ClearMoveHighlights()
+        {
+            foreach (var cell in _moveCells)
+                cell.MeshRenderer.sharedMaterial = cell.IsDark ? _darkMaterial : _lightMaterial;
+            _moveCells.Clear();
+            _currentMoves.Clear();
         }
 
         private void OnCellEnter(Cell cell)
@@ -103,7 +205,11 @@ namespace Netologia.Tactical
         private void OnCellExit(Cell cell)
         {
             if (cell == _selected) return;
-            cell.MeshRenderer.sharedMaterial = cell.IsDark ? _darkMaterial : _lightMaterial;
+            // Клетку хода после ухода курсора возвращаем в голубой, обычные — в шахматный цвет
+            if (_moveCells.Contains(cell))
+                cell.MeshRenderer.sharedMaterial = _moveMaterial;
+            else
+                cell.MeshRenderer.sharedMaterial = cell.IsDark ? _darkMaterial : _lightMaterial;
         }
 
         private void OnCellClick(Cell cell) => CellClicked?.Invoke(cell);

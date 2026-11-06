@@ -3,8 +3,8 @@ using UnityEngine;
 namespace Netologia.Tactical.Commands
 {
     /// <summary>
-    /// Команда выбора: в Select выбирает фишку текущего игрока,
-    /// в Move позволяет перевыбрать свою фишку или сбросить выбор
+    /// Команда выбора и хода: в Select выбирает фишку текущего игрока,
+    /// в Move выполняет ход по подсвеченной клетке или перевыбор фишки
     /// </summary>
     public class CellSelectCommand : IGameplayCommand
     {
@@ -26,7 +26,7 @@ namespace Netologia.Tactical.Commands
                     TrySelect(cell);
                     break;
                 case GameStatus.Move:
-                    TryReselect(cell);
+                    TryMoveOrReselect(cell);
                     break;
             }
         }
@@ -44,18 +44,30 @@ namespace Netologia.Tactical.Commands
             }
         }
 
-        private void TryReselect(Cell cell)
+        private void TryMoveOrReselect(Cell cell)
         {
+            var selected = _battlefield.SelectedCell;
+
+            // Клик по подсвеченной клетке хода — выполняем ход
+            if (selected != null && _battlefield.TryGetMove(cell, out var victim))
+            {
+                var attack = victim != null ? $" с атакой на ({victim.X}, {victim.Z})" : string.Empty;
+                Debug.Log($"[Command] Ход ({selected.X}, {selected.Z}) -> ({cell.X}, {cell.Z}){attack}");
+                _player.ExecuteMove(_battlefield, selected, cell, victim);
+                return;
+            }
+
             // Повторный клик по выбранной фишке — сброс выбора
-            if (cell == _battlefield.SelectedCell)
+            if (cell == selected)
             {
                 ResetSelection();
                 return;
             }
+
             // Клик по своей другой фишке — переключение выбора
             if (cell.Unit != null && cell.Unit.Color == _player.CurrentTurn)
                 TrySelect(cell);
-            // Клик по пустой клетке — пока без действия, ходы появятся следующим шагом
+            // Клик по пустой недоступной клетке — без действия
         }
 
         private void ResetSelection()
