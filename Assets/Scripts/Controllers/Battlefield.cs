@@ -8,6 +8,8 @@ namespace Netologia.Tactical
         [SerializeField]
         private Cell _cellPrefab;
         [SerializeField]
+        private Unit _unitPrefab;
+        [SerializeField]
         private Material _lightMaterial;
         [SerializeField]
         private Material _darkMaterial;
@@ -16,15 +18,18 @@ namespace Netologia.Tactical
         [SerializeField]
         private Material _selectedMaterial;
         [SerializeField]
+        private Material _unitWhiteMaterial;
+        [SerializeField]
+        private Material _unitBlackMaterial;
+        [SerializeField]
         private int _size = 8;
+
+        // Высота, на которую фишка ставится на клетку (клетка 0.2 высотой, верх на 0.1)
+        private const float UnitOffset = 0.3f;
 
         private Cell[,] _cells;
         private Cell _selected;
 
-        /// <summary>
-        /// Событие клика по клетке — на него подписывается BattleController
-        /// и передаёт клик в команду IGameplayCommand (п. 3.2 ТЗ)
-        /// </summary>
         public event Action<Cell> CellClicked;
 
         private void Awake()
@@ -47,7 +52,22 @@ namespace Netologia.Tactical
                     cell.PointerExit += OnCellExit;
                     cell.Clicked += OnCellClick;
                     _cells[x, z] = cell;
+
+                    // Шашки стоят только на тёмных клетках, по три ряда с каждой стороны
+                    if (isDark && (z <= 2 || z >= 5))
+                        SpawnUnit(cell, z <= 2 ? UnitColor.Black : UnitColor.White);
                 }
+        }
+
+        private void SpawnUnit(Cell cell, UnitColor color)
+        {
+            var unit = Instantiate(_unitPrefab, transform);
+            unit.transform.localPosition = cell.transform.localPosition + Vector3.up * UnitOffset;
+            unit.Initialize(color, cell);
+            unit.MeshRenderer.sharedMaterial = color == UnitColor.White ? _unitWhiteMaterial : _unitBlackMaterial;
+            unit.PointerEnter += OnUnitEnter;
+            unit.PointerExit += OnUnitExit;
+            unit.Clicked += OnUnitClick;
         }
 
         private void OnCellEnter(Cell cell)
@@ -69,8 +89,12 @@ namespace Netologia.Tactical
             _selected = cell;
             cell.MeshRenderer.sharedMaterial = _selectedMaterial;
 
-            // Пробрасываем клик дальше по цепочке: Battlefield → BattleController → команда
             CellClicked?.Invoke(cell);
         }
+
+        // Наведение на фишку подсвечивает клетку, на которой она стоит
+        private void OnUnitEnter(Unit unit) => OnCellEnter(unit.Cell);
+        private void OnUnitExit(Unit unit) => OnCellExit(unit.Cell);
+        private void OnUnitClick(Unit unit) => OnCellClick(unit.Cell);
     }
 }
