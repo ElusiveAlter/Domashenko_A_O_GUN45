@@ -5,8 +5,7 @@ using Netologia.Tactical.Commands;
 namespace Netologia.Tactical
 {
     /// <summary>
-    /// Обрабатывает весь инпут игрока с клавиатуры и с мыши.
-    /// Мышь приходит событиями от Battlefield, клавиатура — через InputActionAsset.
+    /// Обрабатывает весь инпут игрока с клавиатуры и с мыши
     /// </summary>
     public class BattleController : MonoBehaviour
     {
@@ -23,7 +22,7 @@ namespace Netologia.Tactical
 
         private void Awake()
         {
-            _cellSelect = new CellSelectCommand(_battlefield);
+            _cellSelect = new CellSelectCommand(_battlefield, _player);
 
             var map = _inputActions.FindActionMap("Gameplay");
             _cancelAction = map.FindAction("Cancel");
@@ -50,15 +49,19 @@ namespace Netologia.Tactical
 
         private void OnCellClicked(Cell cell)
         {
-            // Пока ввод разрешён — клик уходит в команду
             if (_player.InputEnabled)
                 _cellSelect.Interact(cell);
         }
 
         private void OnCancel(InputAction.CallbackContext context)
         {
-            if (_player.InputEnabled)
-                Debug.Log("[Input] Cancel");
+            // Cancel сбрасывает выбранную фишку
+            if (_player.InputEnabled && _player.Status == GameStatus.Move)
+            {
+                _battlefield.ResetSelection();
+                _player.Status = GameStatus.Select;
+                Debug.Log("[Input] Cancel: сброс выбора фишки");
+            }
         }
 
         private void OnConfirm(InputAction.CallbackContext context)

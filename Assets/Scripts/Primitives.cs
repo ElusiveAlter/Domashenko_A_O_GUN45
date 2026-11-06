@@ -8,4 +8,13 @@ namespace Netologia.Tactical
         White,
         Black
     }
+
+    /// <summary>
+    /// Статус игры: Select — выбор фишки, Move — выбор клетки хода
+    /// </summary>
+    public enum GameStatus
+    {
+        Select,
+        Move
+    }
 }

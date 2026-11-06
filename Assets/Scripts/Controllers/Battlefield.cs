@@ -30,6 +30,9 @@ namespace Netologia.Tactical
         private Cell[,] _cells;
         private Cell _selected;
 
+        /// <summary>Клетка с выбранной фишкой — нужна команде для сброса выбора</summary>
+        public Cell SelectedCell => _selected;
+
         public event Action<Cell> CellClicked;
 
         private void Awake()
@@ -70,6 +73,27 @@ namespace Netologia.Tactical
             unit.Clicked += OnUnitClick;
         }
 
+        /// <summary>
+        /// Выбирает фишку текущего игрока, стоящую на клетке.
+        /// Возвращает false, если фишки нет или она чужая (статус и ход проверяет команда)
+        /// </summary>
+        public bool TrySelectUnit(Cell cell, UnitColor player)
+        {
+            if (cell.Unit == null || cell.Unit.Color != player) return false;
+            if (_selected == cell) return false;
+            ResetSelection();
+            _selected = cell;
+            cell.MeshRenderer.sharedMaterial = _selectedMaterial;
+            return true;
+        }
+
+        public void ResetSelection()
+        {
+            if (_selected == null) return;
+            _selected.MeshRenderer.sharedMaterial = _selected.IsDark ? _darkMaterial : _lightMaterial;
+            _selected = null;
+        }
+
         private void OnCellEnter(Cell cell)
         {
             if (cell == _selected) return;
@@ -82,15 +106,7 @@ namespace Netologia.Tactical
             cell.MeshRenderer.sharedMaterial = cell.IsDark ? _darkMaterial : _lightMaterial;
         }
 
-        private void OnCellClick(Cell cell)
-        {
-            if (_selected != null)
-                _selected.MeshRenderer.sharedMaterial = _selected.IsDark ? _darkMaterial : _lightMaterial;
-            _selected = cell;
-            cell.MeshRenderer.sharedMaterial = _selectedMaterial;
-
-            CellClicked?.Invoke(cell);
-        }
+        private void OnCellClick(Cell cell) => CellClicked?.Invoke(cell);
 
         // Наведение на фишку подсвечивает клетку, на которой она стоит
         private void OnUnitEnter(Unit unit) => OnCellEnter(unit.Cell);
