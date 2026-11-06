@@ -230,7 +230,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 22400762, guid: 67117722a812a2e46ab8cb8eafbf5f5e, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0.000015258789
+      value: 0.00002670288
       objectReference: {fileID: 0}
     - target: {fileID: 22426080, guid: 67117722a812a2e46ab8cb8eafbf5f5e, type: 3}
       propertyPath: m_AnchorMax.x
@@ -708,10 +708,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _cellPrefab: {fileID: 4992118976611596622, guid: f3c921121ab8cb64c9a4ba2ff025739f, type: 3}
+  _unitPrefab: {fileID: 2234337607841183843, guid: 468492356a3785949b931aa0c98f0d8f, type: 3}
   _lightMaterial: {fileID: 2100000, guid: 2c748f7a6d013c54f9e5837f3378eacf, type: 2}
   _darkMaterial: {fileID: 2100000, guid: 514154b70880e784ab0e5edd813997e2, type: 2}
   _hoverMaterial: {fileID: 2100000, guid: f7e228c0cf213af49b779b4d676b2a85, type: 2}
   _selectedMaterial: {fileID: 2100000, guid: 247f0f9b3eeaee74f8beeb8f528c19c7, type: 2}
+  _unitWhiteMaterial: {fileID: 2100000, guid: 9a4ddba16c387bf48a21cbbff087c6e1, type: 2}
+  _unitBlackMaterial: {fileID: 2100000, guid: e4d9bf3dcb6014b47ae5896cdd48cda9, type: 2}
   _size: 8
 --- !u!4 &2043100833
 Transform:
