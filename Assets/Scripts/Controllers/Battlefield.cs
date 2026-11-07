@@ -45,18 +45,19 @@ namespace Netologia.Tactical
         private readonly Dictionary<Cell, Cell> _currentMoves = new();
         // Временный словарь для аналитики без подсветки
         private readonly Dictionary<Cell, Cell> _tempMoves = new();
-        private readonly List<Cell> _moveCells = new();
-        // Фишки, обязанные атаковать в текущий ход
-        private readonly List<Cell> _mandatoryCells = new();
+        // Клетки доступных ходов: HashSet — Contains из RefreshCellMaterial O(1)
+        private readonly HashSet<Cell> _moveCells = new();
+        // Фишки, обязанные атаковать в текущий ход (HashSet — частые проверки вхождения)
+        private readonly HashSet<Cell> _mandatoryCells = new();
 
         /// <summary>Клетка с выбранной фишкой — нужна команде для сброса выбора</summary>
         public Cell SelectedCell => _selected;
 
-        /// <summary>В текущем ходу есть обязательная атака </summary>
+        /// <summary>В текущем ходу есть обязательная атака</summary>
         public bool HasMandatoryAttacks => _mandatoryCells.Count > 0;
 
         public event Action<Cell> CellClicked;
-        // Клетка под курсором: нужны BattleController для подтверждения по Space
+        // Клетка под курсором: нужна BattleController для подтверждения по Space
         public event Action<Cell> CellHovered;
         public event Action<Cell> CellUnhovered;
 
@@ -123,10 +124,11 @@ namespace Netologia.Tactical
             if (cell.Unit == null) return;
             // В режиме обязательной атаки доступны только ходы с атакой
             CollectMoves(cell, _currentMoves, attacksOnly);
-            foreach (var destination in _currentMoves.Keys)
+            // Итерация по словарю без .Keys — не создаёт снапшот ключей
+            foreach (var pair in _currentMoves)
             {
-                destination.MeshRenderer.sharedMaterial = _moveMaterial;
-                _moveCells.Add(destination);
+                pair.Key.MeshRenderer.sharedMaterial = _moveMaterial;
+                _moveCells.Add(pair.Key);
             }
         }
 
@@ -231,7 +233,7 @@ namespace Netologia.Tactical
         /// </summary>
         public void ComputeMandatoryAttacks(UnitColor player)
         {
-            // Снимаем подсветку прошлого хода напрямую: клетка ещё в списке,
+            // Снимаем подсветку прошлого хода напрямую: клетка ещё в наборе,
             // поэтому RefreshCellMaterial вернул бы ей красный обратно
             foreach (var cell in _mandatoryCells)
                 if (cell != _selected)
@@ -252,7 +254,7 @@ namespace Netologia.Tactical
                 cell.MeshRenderer.sharedMaterial = _mandatoryMaterial;
         }
 
-        /// <summary>Входит ли клетка в список фишек, обязанных атаковать</summary>
+        /// <summary>Входит ли клетка в набор фишек, обязанных атаковать</summary>
         public bool IsMandatoryCell(Cell cell) => _mandatoryCells.Contains(cell);
 
         /// <summary>
@@ -267,7 +269,7 @@ namespace Netologia.Tactical
         /// <summary>Выполняет ход: перемещает фишку, убирает жертву атаки, снимает подсветку</summary>
         public void MoveUnit(Cell from, Cell to, Cell victim)
         {
-            // Фишка уходит с клетки обязательной атаки — убираем её из списка до сброса выбора
+            // Фишка уходит с клетки обязательной атаки — убираем её из набора до сброса выбора
             _mandatoryCells.Remove(from);
             ResetSelection();
 
@@ -277,7 +279,10 @@ namespace Netologia.Tactical
             if (victim != null)
             {
                 var victimUnit = victim.Unit;
+                // Ссылка с клетки снимается до Destroy — клетка не останется с битой ссылкой
                 victim.Unit = null;
+                // Destroy безопасен до перемещения ходящей фишки: оба действия синхронные,
+                // события указателя между строками не приходят, объект жертвы более не участвует
                 Destroy(victimUnit.gameObject);
             }
 
@@ -313,7 +318,8 @@ namespace Netologia.Tactical
             _currentMoves.Clear();
         }
 
-        // Единая точка выбора материала клетки: выбранная, ход, обязательная атака, шахматный цвет
+        // Единая точка выбора материала клетки: выбранная, ход, обязательная атака, шахматный цвет.
+        // Оба Contains — по HashSet, вызывается на каждом наведении курсора
         private void RefreshCellMaterial(Cell cell)
         {
             if (cell == _selected)
