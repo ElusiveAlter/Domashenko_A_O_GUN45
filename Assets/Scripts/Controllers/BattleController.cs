@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Netologia.Tactical.Commands;
@@ -20,6 +21,9 @@ namespace Netologia.Tactical
         private InputAction _cancelAction;
         private InputAction _confirmAction;
 
+        // Клетка, над которой сейчас находится курсор (для Confirm по Space)
+        private Cell _hoveredCell;
+
         private void Awake()
         {
             _cellSelect = new CellSelectCommand(_battlefield, _player);
@@ -38,8 +42,12 @@ namespace Netologia.Tactical
         private void OnEnable()
         {
             _battlefield.CellClicked += OnCellClicked;
+            _battlefield.CellHovered += OnCellHovered;
+            _battlefield.CellUnhovered += OnCellUnhovered;
+
             _cancelAction.performed += OnCancel;
             _confirmAction.performed += OnConfirm;
+
             _cancelAction.Enable();
             _confirmAction.Enable();
         }
@@ -47,16 +55,34 @@ namespace Netologia.Tactical
         private void OnDisable()
         {
             _battlefield.CellClicked -= OnCellClicked;
+            _battlefield.CellHovered -= OnCellHovered;
+            _battlefield.CellUnhovered -= OnCellUnhovered;
+
             _cancelAction.performed -= OnCancel;
             _confirmAction.performed -= OnConfirm;
+
             _cancelAction.Disable();
             _confirmAction.Disable();
+
+            // При выключении контроллера курсор «висеть» над клеткой не должен
+            _hoveredCell = null;
         }
 
         private void OnCellClicked(Cell cell)
         {
-            if (_player.InputEnabled)
-                _cellSelect.Interact(cell);
+            TryInteract(cell);
+        }
+
+        private void OnCellHovered(Cell cell)
+        {
+            _hoveredCell = cell;
+        }
+
+        private void OnCellUnhovered(Cell cell)
+        {
+            // Снимаем наведение, только если ушла именно та клетка, что зарегистрирована
+            if (_hoveredCell == cell)
+                _hoveredCell = null;
         }
 
         private void OnCancel(InputAction.CallbackContext context)
@@ -81,8 +107,21 @@ namespace Netologia.Tactical
 
         private void OnConfirm(InputAction.CallbackContext context)
         {
+            // Space повторяет действие ЛКМ по клетке под курсором.
+            // Если под курсором нет клетки — действие просто не срабатывает
+            TryInteract(_hoveredCell);
+        }
+
+        /// <summary>
+        /// Общая точка входа для ЛКМ и Space: выбор фишки или подтверждение хода
+        /// </summary>
+        private void TryInteract(Cell cell)
+        {
+            if (cell == null)
+                return;
+
             if (_player.InputEnabled)
-                Debug.Log("[Input] Confirm");
+                _cellSelect.Interact(cell);
         }
     }
 }

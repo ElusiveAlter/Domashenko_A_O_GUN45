@@ -56,6 +56,9 @@ namespace Netologia.Tactical
         public bool HasMandatoryAttacks => _mandatoryCells.Count > 0;
 
         public event Action<Cell> CellClicked;
+        // Клетка под курсором: нужны BattleController для подтверждения по Space
+        public event Action<Cell> CellHovered;
+        public event Action<Cell> CellUnhovered;
 
         private void Awake()
         {
@@ -325,12 +328,15 @@ namespace Netologia.Tactical
 
         private void OnCellEnter(Cell cell)
         {
+            // Сообщаем контроллеру, над какой клеткой курсор — это нужно для Confirm (Space)
+            CellHovered?.Invoke(cell);
             if (cell == _selected) return;
             cell.MeshRenderer.sharedMaterial = _hoverMaterial;
         }
 
         private void OnCellExit(Cell cell)
         {
+            CellUnhovered?.Invoke(cell);
             if (cell == _selected) return;
             RefreshCellMaterial(cell);
         }
