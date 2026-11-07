@@ -3,7 +3,7 @@ using Netologia.Tactical;
 namespace Netologia.Tactical.Commands
 {
     /// <summary>
-    /// Обработка взаимодействия игрока с игровым полем
+    /// Обрабатывает одно взаимодействие игрока с полем: выбор фишки или подтверждение хода по указанной клетке
     /// </summary>
     public interface IGameplayCommand
     {

@@ -37,17 +37,20 @@ namespace Netologia.Tactical
         /// </summary>
         public void ExecuteMove(Battlefield battlefield, Cell from, Cell to, Cell victim)
         {
+            // Блокируем ввод на время визуализации хода.
+            // Сейчас ход применяется мгновенно, поэтому блок снимается в конце метода;
+            // при добавлении анимации UnlockInput нужно будет вызывать по её завершении
             LockInput();
-            battlefield.MoveUnit(from, to, victim);
-            UnlockInput();
 
-            // После взятия той же фишкой возможна ещё атака — продолжаем обязательно (п. 7.1 ТЗ)
+            battlefield.MoveUnit(from, to, victim);
+
             if (victim != null && battlefield.HasAttacksFrom(to))
             {
                 IsAttackChain = true;
                 // Только взятия: простые ходы в цепочке атак запрещены (п. 7.2 ТЗ)
                 battlefield.TrySelectUnit(to, CurrentTurn, true);
                 Status = GameStatus.Move;
+                UnlockInput();
                 Debug.Log("[Game] Цепочка атак: продолжайте взятие этой фишкой");
                 return;
             }
@@ -56,6 +59,7 @@ namespace Netologia.Tactical
             SwitchTurn();
             // Аналитика всех фишек нового игрока в начале его хода (п. 6.1 ТЗ)
             battlefield.ComputeMandatoryAttacks(CurrentTurn);
+            UnlockInput();
         }
 
         public void SwitchTurn()

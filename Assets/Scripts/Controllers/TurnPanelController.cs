@@ -22,6 +22,14 @@ namespace Netologia.Tactical
             }
         }
 
+        private void Start()
+        {
+            // Страховка: если OnEnable панели выполнился раньше Awake игрока,
+            // событие ещё не приходило — показываем актуальный ход из Start
+            if (_player != null)
+                OnTurnChanged(_player.CurrentTurn);
+        }
+
         private void OnDisable()
         {
             if (_player != null)
